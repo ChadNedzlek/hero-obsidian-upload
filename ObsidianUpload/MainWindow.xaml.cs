@@ -606,6 +606,8 @@ namespace ObsidianUpload
 			that._settings.LastCharacterId = newCharacter?.Id;
 			that._settings.Save();
 
+		    that.TargetCharacter = null;
+
 			that.LoadCharacter(newCharacter);
 		}
 
@@ -626,8 +628,6 @@ namespace ObsidianUpload
 			{
 				charObject = JObject.Load(jsonReader);
 			}
-
-		    var body = JsonConvert.SerializeObject(charObject);
 
 			TargetCharacter = ToSummary(charObject);
 		}
@@ -657,7 +657,7 @@ namespace ObsidianUpload
 			{
 				ConsumerKey = _settings.OauthConsumerKey,
 				ConsumerSecret = _settings.OauthConsumerSecret,
-				SignatureMethod = SignatureMethod.HmacSha1
+				SignatureMethod = SignatureMethod.HmacSha1,
 			};
 
 			var session = new OAuthSession(
@@ -665,10 +665,10 @@ namespace ObsidianUpload
 				"https://www.obsidianportal.com/oauth/request_token",
 				"https://www.obsidianportal.com/oauth/authorize",
 				"https://www.obsidianportal.com/oauth/access_token");
-
+            
 			IToken token = session.GetRequestToken();
 
-			string authLink = session.GetUserAuthorizationUrlForToken(token, "about:blank");
+			string authLink = session.GetUserAuthorizationUrlForToken(token, "oob");
 			Task<IToken> getTokenTask = CallbackAsyncThread.RunAsync(
 				() =>
 				{
@@ -728,6 +728,9 @@ namespace ObsidianUpload
 			if (character == null)
 				return;
 
+		    if (TargetCharacter == null)
+		        return;
+
 			OAuthSession newSession = CreateOAuthSession();
 			newSession.ConsumerContext.UseHeaderForOAuthParameters = true;
 			HttpWebRequest request = newSession.Request()
@@ -752,9 +755,9 @@ namespace ObsidianUpload
 					(HttpWebResponse) await Task.Factory.FromAsync(request.BeginGetResponse, request.EndGetResponse, null))
 			{
 				if (response.StatusCode == HttpStatusCode.OK)
-					MessageBox.Show("Character upload complete");
+					MessageBox.Show(this, "Character upload complete", "Complete");
 				else
-					MessageBox.Show("Failed!");
+					MessageBox.Show(this, "Character upload failed!", "Failed", MessageBoxButton.OK, MessageBoxImage.Error);
 			}
 
 			TargetCharacter = ToSummary(_sourceCharacterObject);
