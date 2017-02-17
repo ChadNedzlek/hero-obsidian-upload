@@ -12,7 +12,7 @@
       <Value Profile="(Default)">YsfgE7kmb9rFGAripZig</Value>
     </Setting>
     <Setting Name="OauthConsumerSecret" Type="System.String" Scope="Application">
-      <Value Profile="(Default)" />
+      <Value Profile="(Default)">wex3fV4EkUjLqj28MadH0hIE45RgfLwVKasnI6vz</Value>
     </Setting>
     <Setting Name="LastCampaignId" Type="System.String" Scope="User">
       <Value Profile="(Default)" />

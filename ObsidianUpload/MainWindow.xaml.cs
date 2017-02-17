@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using System.Windows;
 using System.Xml.Linq;
 using System.Xml.XPath;
@@ -411,7 +414,83 @@ namespace ObsidianUpload
 				sheet["ctlSpellSectionCount"] = spellSectionCount.ToString();
 			}
 
-			SourceCharacter = ToSummary(_sourceCharacterObject);
+		    {
+		        var itemMap = new[]
+		        {
+		            new {Name = "Belt", Index = 1},
+		            new {Name = "Neck", Index = 2},
+		            new {Name = "Body", Index = 3},
+		            new {Name = "Ring", Index = 4},
+		            new {Name = "Chest", Index = 5},
+		            new {Name = "Ring", Index = 6},
+		            new {Name = "Eyes", Index = 7},
+		            new {Name = "Shoulders", Index = 8},
+		            new {Name = "Feet", Index = 9},
+		            new {Name = "Wrist", Index = 10},
+		            new {Name = "Hands", Index = 11},
+		            new {Name = (string) null, Index = 12},
+		            new {Name = "Head", Index = 13},
+		            new {Name = (string) null, Index = 14},
+		            new {Name = "Headband", Index = 15},
+		            new {Name = (string) null, Index = 16},
+                    new {Name = "Armor", Index = 17},
+                    new {Name = "Shield", Index = 18},
+                }.ToList();
+
+		        int extraCount = 0;
+                foreach(var item in elem.Element("magicitems").Elements("item"))
+                {
+                    var slotName = item.Element("itemslot")?.Value;
+                    string itemName = item.Attribute("name").Value;
+
+                    if (slotName == null &&
+                        elem.Element("defenses")
+                            .Elements("armor")
+                            .Any(
+                                ar => String.Equals(
+                                    ar.Attribute("name").Value,
+                                    itemName,
+                                    StringComparison.OrdinalIgnoreCase)))
+                    {
+                        slotName = "Shield";
+                    }
+
+                    int slotIndex = itemMap.FindIndex(s => s.Name == slotName);
+                    if (slotIndex == -1)
+                    {
+                        extraCount++;
+                        sheet[$"misc_magic_item{extraCount}"] = itemName;
+                    }
+                    else
+                    {
+                        var slot = itemMap[slotIndex];
+                        itemMap.RemoveAt(slotIndex);
+                        sheet[$"protitem{slot.Index}"] = itemName;
+                    }
+                }
+		        sheet["ctlMagicItemCount"] = extraCount.ToString();
+		    }
+
+		    {
+		        int gearCount = 0;
+		        foreach (var gear in elem.Element("gear").Elements("item"))
+		        {
+		            gearCount++;
+		            if ((gear.Attribute("quantity")?.Value ?? "1") != "1")
+		            {
+		                sheet[$"item{gearCount}"] = $"{gear.Attribute("name").Value} ({gear.Attribute("quantity").Value})";
+
+		            }
+		            else
+		            {
+                        sheet[$"item{gearCount}"] = gear.Attribute("name").Value;
+                    }
+                    sheet[$"item{gearCount}_weight"] = gear.Element("weight").Attribute("value").Value;
+                }
+		        sheet["ctlInventoryCount"] = gearCount.ToString();
+		    }
+
+		    SourceCharacter = ToSummary(_sourceCharacterObject);
 		}
 
 		private async Task LoadInformation()
@@ -546,12 +625,18 @@ namespace ObsidianUpload
 				charObject = JObject.Load(jsonReader);
 			}
 
+		    var body = JsonConvert.SerializeObject(charObject);
+
 			TargetCharacter = ToSummary(charObject);
 		}
 
 		private static CharacterSummary ToSummary(JObject charObject)
 		{
-			var sheet = (JObject) charObject["dynamic_sheet"];
+		    JToken jToken = charObject["dynamic_sheet"];
+		    if (jToken.Type != JTokenType.Object)
+		        return null;
+
+		    var sheet = (JObject) jToken;
 
 			var characterSummary = new CharacterSummary
 			{
@@ -581,27 +666,38 @@ namespace ObsidianUpload
 
 			IToken token = session.GetRequestToken();
 
-			string authLink = session.GetUserAuthorizationUrlForToken(token, null);
+			string authLink = session.GetUserAuthorizationUrlForToken(token, "about:blank");
 			Task<IToken> getTokenTask = CallbackAsyncThread.RunAsync(
 				() =>
 				{
-					string verifier;
+					string verifier = null;
 					using (var browser = new IE(authLink) {AutoClose = true})
 					{
-						while (
-							!string.Equals(browser.Url, "https://www.obsidianportal.com/oauth/authorize", StringComparison.OrdinalIgnoreCase))
-							Thread.Sleep(500);
-						Element element = browser.Element("oauth-verifier");
-						if (!element.Exists)
-							return null;
-						verifier = element.Text;
+					    while (
+					        !string.Equals(
+					            browser.Url,
+					            "https://www.obsidianportal.com/oauth/authorize",
+					            StringComparison.OrdinalIgnoreCase))
+					    {
+					        NameValueCollection queryString = HttpUtility.ParseQueryString(browser.Uri.Query);
+					        if (queryString["oauth_verifier"] != null)
+					        {
+					            verifier = queryString["oauth_verifier"];
+					            break;
+					        }
+					        Thread.Sleep(500);
+					    }
+
+					    if (verifier == null)
+					    {
+					        Element element = browser.Element("oauth-verifier");
+					        if (!element.Exists)
+					            return null;
+					        verifier = element.Text;
+					    }
 					}
 
-					return session.WithQueryParameters(
-						new Dictionary<string, string>
-						{
-							{"oauth_verifier", verifier}
-						}).ExchangeRequestTokenForAccessToken(token);
+					return session.ExchangeRequestTokenForAccessToken(token, verifier);
 				},
 				ApartmentState.STA);
 
