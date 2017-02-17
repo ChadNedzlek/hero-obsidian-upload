@@ -1,0 +1,51 @@
+﻿<Window x:Class="ObsidianUpload.MainWindow"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:local="clr-namespace:ObsidianUpload"
+	mc:Ignorable="d"
+	Title="MainWindow" Height="350" Width="525">
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="*" />
+			<RowDefinition Height="Auto"/>
+		</Grid.RowDefinitions>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="*" />
+			<ColumnDefinition Width="40" />
+			<ColumnDefinition Width="*" />
+		</Grid.ColumnDefinitions>
+		<StackPanel Grid.ColumnSpan="2" Orientation="Horizontal">
+			<Label Content="Logged in as:" />
+			<Label Content="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=UserName}" />
+		</StackPanel>
+		<Button Grid.Column="2" Content="Login" Click="Login" />
+		<ComboBox Grid.Row="1"
+			ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=AllCampaigns}"
+			SelectedItem="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=CurrentCampaign}"
+			DisplayMemberPath="Name" />
+		<ComboBox Grid.Row="1" Grid.Column="2"
+			ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=CurrentCampaign.Characters}"
+			SelectedItem="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=CurrentCharacter}"
+			DisplayMemberPath="Name" />
+		<Button Content="->" Grid.Column="1" Grid.Row="2" Click="UploadCharacter" Grid.RowSpan="2" />
+		<StackPanel Grid.Row="2" Margin="5">
+			<TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=SourceCharacter.Name}" FontSize="16" TextWrapping="Wrap"/>
+			<TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=SourceCharacter.Race}" TextWrapping="Wrap"/>
+			<TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=SourceCharacter.Gender}" TextWrapping="Wrap"/>
+			<TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=SourceCharacter.ClassLevels}" TextWrapping="Wrap"/>
+			<TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=SourceCharacter.Alignment}" TextWrapping="Wrap"/>
+		</StackPanel>
+		<StackPanel Grid.Row="2" Grid.Column="2" Margin="5" Grid.RowSpan="2">
+			<TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=TargetCharacter.Name}" FontSize="16" TextWrapping="Wrap"/>
+			<TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=TargetCharacter.Race}" TextWrapping="Wrap"/>
+			<TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=TargetCharacter.Gender}" TextWrapping="Wrap"/>
+			<TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=TargetCharacter.ClassLevels}" TextWrapping="Wrap"/>
+			<TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=local:MainWindow}, Path=TargetCharacter.Alignment}" TextWrapping="Wrap"/>
+		</StackPanel>
+		<Button Grid.Row="3" Click="OpenNewCharacter">Import Xml...</Button>
+	</Grid>
+</Window>
