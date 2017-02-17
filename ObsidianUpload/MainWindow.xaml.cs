@@ -443,6 +443,8 @@ namespace ObsidianUpload
                     var slotName = item.Element("itemslot")?.Value;
                     string itemName = item.Attribute("name").Value;
 
+                    // The sheild slot is sort of weird, in that it's not a "slot" as HL understands it
+                    // Assume any "armor" things not in the "Armor" slot are shields
                     if (slotName == null &&
                         elem.Element("defenses")
                             .Elements("armor")
