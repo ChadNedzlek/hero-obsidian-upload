@@ -5,7 +5,6 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -22,9 +21,6 @@ using Settings = ObsidianUpload.Properties.Settings;
 
 namespace ObsidianUpload
 {
-	/// <summary>
-	///     Interaction logic for MainWindow.xaml
-	/// </summary>
 	public partial class MainWindow
 	{
 		public static readonly DependencyProperty AllCampaignsProperty = DependencyProperty.Register(
@@ -51,7 +47,8 @@ namespace ObsidianUpload
 			typeof(MainWindow),
 			new PropertyMetadata(default(CharacterSummary)));
 
-		public static readonly DependencyProperty SourceCharacterProperty = _sourceCharacterPropertyKey.DependencyProperty;
+		public static readonly DependencyProperty SourceCharacterProperty =
+			_sourceCharacterPropertyKey.DependencyProperty;
 
 		private static readonly DependencyPropertyKey _targetCharacterPropertyKey = DependencyProperty.RegisterReadOnly(
 			"TargetCharacter",
@@ -59,7 +56,8 @@ namespace ObsidianUpload
 			typeof(MainWindow),
 			new PropertyMetadata(default(CharacterSummary)));
 
-		public static readonly DependencyProperty TargetCharacterProperty = _targetCharacterPropertyKey.DependencyProperty;
+		public static readonly DependencyProperty TargetCharacterProperty =
+			_targetCharacterPropertyKey.DependencyProperty;
 
 		private static readonly DependencyPropertyKey _userNamePropertyKey = DependencyProperty.RegisterReadOnly(
 			"UserName",
@@ -95,37 +93,37 @@ namespace ObsidianUpload
 
 		public ObservableCollection<CampaignInfo> AllCampaigns
 		{
-			get { return (ObservableCollection<CampaignInfo>) GetValue(AllCampaignsProperty); }
+			get { return (ObservableCollection<CampaignInfo>)GetValue(AllCampaignsProperty); }
 			set { SetValue(AllCampaignsProperty, value); }
 		}
 
 		public CampaignInfo CurrentCampaign
 		{
-			get { return (CampaignInfo) GetValue(CurrentCampaignProperty); }
+			get { return (CampaignInfo)GetValue(CurrentCampaignProperty); }
 			set { SetValue(CurrentCampaignProperty, value); }
 		}
 
 		public CharacterInfo CurrentCharacter
 		{
-			get { return (CharacterInfo) GetValue(CurrentCharacterProperty); }
+			get { return (CharacterInfo)GetValue(CurrentCharacterProperty); }
 			set { SetValue(CurrentCharacterProperty, value); }
 		}
 
 		public CharacterSummary SourceCharacter
 		{
-			get { return (CharacterSummary) GetValue(SourceCharacterProperty); }
+			get { return (CharacterSummary)GetValue(SourceCharacterProperty); }
 			private set { SetValue(_sourceCharacterPropertyKey, value); }
 		}
 
 		public CharacterSummary TargetCharacter
 		{
-			get { return (CharacterSummary) GetValue(TargetCharacterProperty); }
+			get { return (CharacterSummary)GetValue(TargetCharacterProperty); }
 			private set { SetValue(_targetCharacterPropertyKey, value); }
 		}
 
 		public string UserName
 		{
-			get { return (string) GetValue(UserNameProperty); }
+			get { return (string)GetValue(UserNameProperty); }
 			private set { SetValue(_userNamePropertyKey, value); }
 		}
 
@@ -133,9 +131,7 @@ namespace ObsidianUpload
 		{
 			XDocument charXml;
 			using (Stream input = File.OpenRead(fileName))
-			{
 				charXml = XDocument.Load(input);
-			}
 
 			XElement elem = charXml.Element("document").Element("public").Element("character");
 
@@ -163,7 +159,7 @@ namespace ObsidianUpload
 
 			var sheet = new JObject(
 				a("race", "race", "racetext"),
-				a("class", "favoredclasses/favoredclass", "name"),
+				new JProperty("class", (elem.XPathSelectElement("favoredclasses/favoredclass") ?? elem.XPathSelectElement("classes/class")).Attribute("name").Value),
 				a("gender", "personal", "gender"),
 				a("age", "personal", "age"),
 				n("size"),
@@ -173,7 +169,9 @@ namespace ObsidianUpload
 				a("experience_points", "xp", "total"),
 				v(
 					"languages",
-					string.Join(", ", elem.Element("languages").Elements("language").Select(l => l.Attribute("name").Value))),
+					string.Join(
+						", ",
+						elem.Element("languages").Elements("language").Select(l => l.Attribute("name").Value))),
 				a("str", "attributes/attribute[@name='Strength']/attrvalue", "text"),
 				a("str_mod", "attributes/attribute[@name='Strength']/attrbonus", "text"),
 				a("dex", "attributes/attribute[@name='Dexterity']/attrvalue", "text"),
@@ -252,7 +250,9 @@ namespace ObsidianUpload
 				foreach (XElement armor in elem.Element("defenses").Elements("armor"))
 				{
 					if (armor.Attribute("useradded")?.Value == "no")
+					{
 						continue;
+					}
 
 					aCounter++;
 
@@ -262,9 +262,12 @@ namespace ObsidianUpload
 					if (armor.Attribute("equipped")?.Value == "yes")
 					{
 						sheet[$"armor{aCounter}_max_dex"] =
-							elem.XPathSelectElement("penalties/penalty[@name='Max Dex Bonus']")?.Attribute("text").Value ?? "";
+							elem.XPathSelectElement("penalties/penalty[@name='Max Dex Bonus']")?.Attribute("text").Value ??
+							"";
 						sheet[$"armor{aCounter}_penalty"] =
-							elem.XPathSelectElement("penalties/penalty[@name='Armor Check Penalty']")?.Attribute("text").Value ?? "";
+							elem.XPathSelectElement("penalties/penalty[@name='Armor Check Penalty']")?
+								.Attribute("text")
+								.Value ?? "";
 					}
 				}
 			}
@@ -273,7 +276,9 @@ namespace ObsidianUpload
 				foreach (XElement weapon in elem.Element("melee").Elements("weapon"))
 				{
 					if (weapon.Attribute("useradded")?.Value == "no")
+					{
 						continue;
+					}
 
 					wCounter++;
 
@@ -285,13 +290,18 @@ namespace ObsidianUpload
 					sheet[$"weapon{wCounter}_type"] = weapon.Attribute("typetext").Value;
 					sheet[$"weapon{wCounter}_notes"] = string.Join(
 						", ",
-						weapon.Attribute("categorytext").Value.Split(',').Select(c => c.Trim()).Where(c => c != "Melee Weapon"));
+						weapon.Attribute("categorytext")
+							.Value.Split(',')
+							.Select(c => c.Trim())
+							.Where(c => c != "Melee Weapon"));
 				}
 
 				foreach (XElement weapon in elem.Element("ranged").Elements("weapon"))
 				{
 					if (weapon.Attribute("useradded")?.Value == "no")
+					{
 						continue;
+					}
 
 					wCounter++;
 
@@ -310,7 +320,9 @@ namespace ObsidianUpload
 				foreach (XElement skill in elem.Element("skills").Elements("skill"))
 				{
 					if (skill.Attribute("usable")?.Value == "no")
+					{
 						continue;
+					}
 
 					skillCount++;
 					sheet[$"skill{skillCount}"] = skill.Attribute("name").Value;
@@ -357,26 +369,33 @@ namespace ObsidianUpload
 				IEnumerable<XElement> known = elem.Element("spellsknown").Elements("spell");
 				IEnumerable<XElement> memorized = elem.Element("spellsmemorized").Elements("spell");
 				IEnumerable<IGrouping<string, XElement>> knownByClass = known.GroupBy(e => e.Attribute("class").Value);
-				IEnumerable<IGrouping<string, XElement>> memorizedByClass = memorized.GroupBy(e => e.Attribute("class").Value);
+				IEnumerable<IGrouping<string, XElement>> memorizedByClass =
+					memorized.GroupBy(e => e.Attribute("class").Value);
 				foreach (XElement spellClass in elem.Element("spellclasses").Elements("spellclass"))
 				{
 					string className = spellClass.Attribute("name").Value;
 					XElement classElem = elem.XPathSelectElement($"classes/class[@name='{className}']");
-					sheet[$"spsSec{spellSectionCount}_Spontaneous"] = spellClass.Attribute("spells")?.Value == "Spontaneous";
+					sheet[$"spsSec{spellSectionCount}_Spontaneous"] = spellClass.Attribute("spells")?.Value ==
+						"Spontaneous";
 					sheet[$"spsSec{spellSectionCount}_Spellbook"] = spellClass.Attribute("spells")?.Value == "Spellbook";
 					sheet[$"spsSec{spellSectionCount}_Domains"] = "0";
 					sheet[$"spsSec{spellSectionCount}_MaxLevel"] = spellClass.Attribute("maxspelllevel").Value;
 					sheet[$"spsSec{spellSectionCount}_Minlevel"] =
-						spellClass.Elements("spelllevel").Select(l => int.Parse(l.Attribute("level").Value)).Min().ToString();
+						spellClass.Elements("spelllevel")
+							.Select(l => int.Parse(l.Attribute("level").Value))
+							.Min()
+							.ToString();
 					sheet[$"spsSec{spellSectionCount}_Name"] = className;
 
 					int baseDc = int.Parse(classElem.Attribute("basespelldc").Value);
 
 					IGrouping<string, XElement> knownForClass =
-						knownByClass.FirstOrDefault(g => className.StartsWith(g.Key, StringComparison.OrdinalIgnoreCase));
+						knownByClass.FirstOrDefault(
+							g => className.StartsWith(g.Key, StringComparison.OrdinalIgnoreCase));
 					ILookup<string, XElement> knownByLevel = knownForClass?.ToLookup(k => k.Attribute("level").Value);
 					IGrouping<string, XElement> memForClass =
-						memorizedByClass.FirstOrDefault(g => className.StartsWith(g.Key, StringComparison.OrdinalIgnoreCase));
+						memorizedByClass.FirstOrDefault(
+							g => className.StartsWith(g.Key, StringComparison.OrdinalIgnoreCase));
 					ILookup<string, XElement> memByLevel = memForClass?.ToLookup(k => k.Attribute("level").Value);
 					foreach (XElement spellLevel in spellClass.Elements("spelllevel"))
 					{
@@ -385,7 +404,9 @@ namespace ObsidianUpload
 
 						XAttribute casts = spellLevel.Attribute("maxcasts");
 						if (casts != null)
+						{
 							sheet[$"spsSec{spellSectionCount}_PerDayNumber{level}"] = casts.Value;
+						}
 
 						if (memByLevel != null)
 						{
@@ -405,94 +426,99 @@ namespace ObsidianUpload
 					}
 
 					if (classElem.Element("arcanespellfailure") != null)
-						sheet[$"spsSec{spellSectionCount}_SpellFailure"] = classElem.Element("arcanespellfailure").Attribute("text").Value;
+					{
+						sheet[$"spsSec{spellSectionCount}_SpellFailure"] =
+							classElem.Element("arcanespellfailure").Attribute("text").Value;
+					}
 					else
+					{
 						sheet[$"spsSec{spellSectionCount}_SpellFailure"] = "-";
+					}
 
 					spellSectionCount++;
 				}
 				sheet["ctlSpellSectionCount"] = spellSectionCount.ToString();
 			}
 
-		    {
-		        var itemMap = new[]
-		        {
-		            new {Name = "Belt", Index = 1},
-		            new {Name = "Neck", Index = 2},
-		            new {Name = "Body", Index = 3},
-		            new {Name = "Ring", Index = 4},
-		            new {Name = "Chest", Index = 5},
-		            new {Name = "Ring", Index = 6},
-		            new {Name = "Eyes", Index = 7},
-		            new {Name = "Shoulders", Index = 8},
-		            new {Name = "Feet", Index = 9},
-		            new {Name = "Wrist", Index = 10},
-		            new {Name = "Hands", Index = 11},
-		            new {Name = (string) null, Index = 12},
-		            new {Name = "Head", Index = 13},
-		            new {Name = (string) null, Index = 14},
-		            new {Name = "Headband", Index = 15},
-		            new {Name = (string) null, Index = 16},
-                    new {Name = "Armor", Index = 17},
-                    new {Name = "Shield", Index = 18},
-                }.ToList();
+			{
+				var itemMap = new[]
+				{
+					new {Name = "Belt", Index = 1},
+					new {Name = "Neck", Index = 2},
+					new {Name = "Body", Index = 3},
+					new {Name = "Ring", Index = 4},
+					new {Name = "Chest", Index = 5},
+					new {Name = "Ring", Index = 6},
+					new {Name = "Eyes", Index = 7},
+					new {Name = "Shoulders", Index = 8},
+					new {Name = "Feet", Index = 9},
+					new {Name = "Wrist", Index = 10},
+					new {Name = "Hands", Index = 11},
+					new {Name = (string) null, Index = 12},
+					new {Name = "Head", Index = 13},
+					new {Name = (string) null, Index = 14},
+					new {Name = "Headband", Index = 15},
+					new {Name = (string) null, Index = 16},
+					new {Name = "Armor", Index = 17},
+					new {Name = "Shield", Index = 18}
+				}.ToList();
 
-		        int extraCount = 0;
-                foreach(var item in elem.Element("magicitems").Elements("item"))
-                {
-                    var slotName = item.Element("itemslot")?.Value;
-                    string itemName = item.Attribute("name").Value;
+				var extraCount = 0;
+				foreach (XElement item in elem.Element("magicitems").Elements("item"))
+				{
+					string slotName = item.Element("itemslot")?.Value;
+					string itemName = item.Attribute("name").Value;
 
-                    // The sheild slot is sort of weird, in that it's not a "slot" as HL understands it
-                    // Assume any "armor" things not in the "Armor" slot are shields
-                    if (slotName == null &&
-                        elem.Element("defenses")
-                            .Elements("armor")
-                            .Any(
-                                ar => String.Equals(
-                                    ar.Attribute("name").Value,
-                                    itemName,
-                                    StringComparison.OrdinalIgnoreCase)))
-                    {
-                        slotName = "Shield";
-                    }
+					// The sheild slot is sort of weird, in that it's not a "slot" as HL understands it
+					// Assume any "armor" things not in the "Armor" slot are shields
+					if (slotName == null &&
+						elem.Element("defenses")
+							.Elements("armor")
+							.Any(
+								ar => string.Equals(
+									ar.Attribute("name").Value,
+									itemName,
+									StringComparison.OrdinalIgnoreCase)))
+					{
+						slotName = "Shield";
+					}
 
-                    int slotIndex = itemMap.FindIndex(s => s.Name == slotName);
-                    if (slotIndex == -1)
-                    {
-                        extraCount++;
-                        sheet[$"misc_magic_item{extraCount}"] = itemName;
-                    }
-                    else
-                    {
-                        var slot = itemMap[slotIndex];
-                        itemMap.RemoveAt(slotIndex);
-                        sheet[$"protitem{slot.Index}"] = itemName;
-                    }
-                }
-		        sheet["ctlMagicItemCount"] = extraCount.ToString();
-		    }
+					int slotIndex = itemMap.FindIndex(s => s.Name == slotName);
+					if (slotIndex == -1)
+					{
+						extraCount++;
+						sheet[$"misc_magic_item{extraCount}"] = itemName;
+					}
+					else
+					{
+						var slot = itemMap[slotIndex];
+						itemMap.RemoveAt(slotIndex);
+						sheet[$"protitem{slot.Index}"] = itemName;
+					}
+				}
+				sheet["ctlMagicItemCount"] = extraCount.ToString();
+			}
 
-		    {
-		        int gearCount = 0;
-		        foreach (var gear in elem.Element("gear").Elements("item"))
-		        {
-		            gearCount++;
-		            if ((gear.Attribute("quantity")?.Value ?? "1") != "1")
-		            {
-		                sheet[$"item{gearCount}"] = $"{gear.Attribute("name").Value} ({gear.Attribute("quantity").Value})";
+			{
+				var gearCount = 0;
+				foreach (XElement gear in elem.Element("gear").Elements("item"))
+				{
+					gearCount++;
+					if ((gear.Attribute("quantity")?.Value ?? "1") != "1")
+					{
+						sheet[$"item{gearCount}"] =
+							$"{gear.Attribute("name").Value} ({gear.Attribute("quantity").Value})";
+					}
+					else
+					{
+						sheet[$"item{gearCount}"] = gear.Attribute("name").Value;
+					}
+					sheet[$"item{gearCount}_weight"] = gear.Element("weight").Attribute("value").Value;
+				}
+				sheet["ctlInventoryCount"] = gearCount.ToString();
+			}
 
-		            }
-		            else
-		            {
-                        sheet[$"item{gearCount}"] = gear.Attribute("name").Value;
-                    }
-                    sheet[$"item{gearCount}_weight"] = gear.Element("weight").Attribute("value").Value;
-                }
-		        sheet["ctlInventoryCount"] = gearCount.ToString();
-		    }
-
-		    SourceCharacter = ToSummary(_sourceCharacterObject);
+			SourceCharacter = ToSummary(_sourceCharacterObject);
 		}
 
 		private async Task LoadInformation()
@@ -511,22 +537,27 @@ namespace ObsidianUpload
 						.Get()
 						.ToWebRequest();
 				JArray charactersObject;
-				using (WebResponse response = await Task.Factory.FromAsync(request.BeginGetResponse, request.EndGetResponse, null))
+				using (
+					WebResponse response = await Task.Factory.FromAsync(
+						request.BeginGetResponse,
+						request.EndGetResponse,
+						null))
 				using (var streamReader = new StreamReader(response.GetResponseStream()))
 				using (var jsonReader = new JsonTextReader(streamReader))
-				{
 					charactersObject = JArray.Load(jsonReader);
-				}
 
 				campaign.Characters = new ObservableCollection<CharacterInfo>(
 					charactersObject.Select(
 						c => new CharacterInfo
 						{
-							Id = (string) c["id"],
-							Name = (string) c["name"],
-							Player = (string) c["author"]["username"],
+							Id = (string)c["id"],
+							Name = (string)c["name"],
+							Player = (string)c["author"]["username"],
 							CampaignId = campaign.Id
 						}));
+
+				campaign.Characters.Add(
+					new CharacterInfo { Id = null, CampaignId = campaign.Id, Name = "<New>", Player = "<New>" });
 
 				foundCurrentCharacter = foundCurrentCharacter ??
 					campaign.Characters.FirstOrDefault(c => c.Id == _settings.LastCharacterId);
@@ -564,14 +595,16 @@ namespace ObsidianUpload
 				newSession.Request().Get().ForUrl("https://api.obsidianportal.com/v1/users/me.json").ToWebRequest();
 
 			JObject meObject;
-			using (WebResponse response = await Task.Factory.FromAsync(request.BeginGetResponse, request.EndGetResponse, null))
+			using (
+				WebResponse response = await Task.Factory.FromAsync(
+					request.BeginGetResponse,
+					request.EndGetResponse,
+					null))
 			using (var streamReader = new StreamReader(response.GetResponseStream()))
 			using (var jsonReader = new JsonTextReader(streamReader))
-			{
 				meObject = JObject.Load(jsonReader);
-			}
-			var campaigns = (JArray) meObject["campaigns"];
-			_settings.UserName = (string) meObject["username"];
+			var campaigns = (JArray)meObject["campaigns"];
+			_settings.UserName = (string)meObject["username"];
 			UserName = _settings.UserName;
 			_settings.Save();
 
@@ -579,8 +612,8 @@ namespace ObsidianUpload
 				campaigns.Select(
 					c => new CampaignInfo
 					{
-						Name = (string) c["name"],
-						Id = (string) c["id"]
+						Name = (string)c["name"],
+						Id = (string)c["id"]
 					}));
 
 			CurrentCampaign = AllCampaigns.FirstOrDefault(c => c.Id == _settings.LastCampaignId);
@@ -589,7 +622,10 @@ namespace ObsidianUpload
 		private static void OnCampaignChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
 		{
 			var that = d as MainWindow;
-			if (that == null) return;
+			if (that == null)
+			{
+				return;
+			}
 			var newCampaign = e.NewValue as CampaignInfo;
 			that._settings.LastCampaignId = newCampaign?.Id;
 			that._settings.LastCampaignName = newCampaign?.Name;
@@ -599,14 +635,17 @@ namespace ObsidianUpload
 		private static void OnCharacterChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
 		{
 			var that = d as MainWindow;
-			if (that == null) return;
+			if (that == null)
+			{
+				return;
+			}
 			var newCharacter = e.NewValue as CharacterInfo;
 
 			that._settings.LastCharacterName = newCharacter?.Name;
 			that._settings.LastCharacterId = newCharacter?.Id;
 			that._settings.Save();
 
-		    that.TargetCharacter = null;
+			that.TargetCharacter = null;
 
 			that.LoadCharacter(newCharacter);
 		}
@@ -614,39 +653,53 @@ namespace ObsidianUpload
 		private async void LoadCharacter(CharacterInfo character)
 		{
 			if (character == null)
+			{
 				return;
+			}
+
+			if (character.Id == null)
+			{
+				TargetCharacter = new CharacterSummary { Name = "<New Character>" };
+				return;
+			}
+
 			OAuthSession newSession = CreateOAuthSession();
 			HttpWebRequest request = newSession.Request()
-				.ForUrl($"https://api.obsidianportal.com/v1/campaigns/{character.CampaignId}/characters/{character.Id}.json")
+				.ForUrl(
+					$"https://api.obsidianportal.com/v1/campaigns/{character.CampaignId}/characters/{character.Id}.json")
 				.Get().
 				ToWebRequest();
 
 			JObject charObject;
-			using (WebResponse response = await Task.Factory.FromAsync(request.BeginGetResponse, request.EndGetResponse, null))
+			using (
+				WebResponse response = await Task.Factory.FromAsync(
+					request.BeginGetResponse,
+					request.EndGetResponse,
+					null))
 			using (var streamReader = new StreamReader(response.GetResponseStream()))
 			using (var jsonReader = new JsonTextReader(streamReader))
-			{
 				charObject = JObject.Load(jsonReader);
-			}
 
 			TargetCharacter = ToSummary(charObject);
 		}
 
 		private static CharacterSummary ToSummary(JObject charObject)
 		{
-		    JToken jToken = charObject["dynamic_sheet"];
-		    if (jToken.Type != JTokenType.Object)
-		        return null;
+			JToken jToken = charObject["dynamic_sheet"];
+			if (jToken.Type != JTokenType.Object)
+			{
+				return null;
+			}
 
-		    var sheet = (JObject) jToken;
+			var sheet = (JObject)jToken;
 
 			var characterSummary = new CharacterSummary
 			{
-				Name = (string) charObject["name"],
-				Alignment = (string) sheet["alignment"],
-				ClassLevels = (string) sheet["level"],
-				Gender = (string) sheet["gender"],
-				Race = (string) sheet["race"]
+				Name = (string)charObject["name"],
+				Alignment = (string)sheet["alignment"],
+				ClassLevels = (string)sheet["level"],
+				Gender = (string)sheet["gender"],
+				Race = (string)sheet["race"]
 			};
 			return characterSummary;
 		}
@@ -657,7 +710,7 @@ namespace ObsidianUpload
 			{
 				ConsumerKey = _settings.OauthConsumerKey,
 				ConsumerSecret = _settings.OauthConsumerSecret,
-				SignatureMethod = SignatureMethod.HmacSha1,
+				SignatureMethod = SignatureMethod.HmacSha1
 			};
 
 			var session = new OAuthSession(
@@ -665,7 +718,7 @@ namespace ObsidianUpload
 				"https://www.obsidianportal.com/oauth/request_token",
 				"https://www.obsidianportal.com/oauth/authorize",
 				"https://www.obsidianportal.com/oauth/access_token");
-            
+
 			IToken token = session.GetRequestToken();
 
 			string authLink = session.GetUserAuthorizationUrlForToken(token, "oob");
@@ -673,30 +726,32 @@ namespace ObsidianUpload
 				() =>
 				{
 					string verifier = null;
-					using (var browser = new IE(authLink) {AutoClose = true})
+					using (var browser = new IE(authLink) { AutoClose = true })
 					{
-					    while (
-					        !string.Equals(
-					            browser.Url,
-					            "https://www.obsidianportal.com/oauth/authorize",
-					            StringComparison.OrdinalIgnoreCase))
-					    {
-					        NameValueCollection queryString = HttpUtility.ParseQueryString(browser.Uri.Query);
-					        if (queryString["oauth_verifier"] != null)
-					        {
-					            verifier = queryString["oauth_verifier"];
-					            break;
-					        }
-					        Thread.Sleep(500);
-					    }
+						while (
+							!string.Equals(
+								browser.Url,
+								"https://www.obsidianportal.com/oauth/authorize",
+								StringComparison.OrdinalIgnoreCase))
+						{
+							NameValueCollection queryString = HttpUtility.ParseQueryString(browser.Uri.Query);
+							if (queryString["oauth_verifier"] != null)
+							{
+								verifier = queryString["oauth_verifier"];
+								break;
+							}
+							Thread.Sleep(500);
+						}
 
-					    if (verifier == null)
-					    {
-					        Element element = browser.Element("oauth-verifier");
-					        if (!element.Exists)
-					            return null;
-					        verifier = element.Text;
-					    }
+						if (verifier == null)
+						{
+							Element element = browser.Element("oauth-verifier");
+							if (!element.Exists)
+							{
+								return null;
+							}
+							verifier = element.Text;
+						}
 					}
 
 					return session.ExchangeRequestTokenForAccessToken(token, verifier);
@@ -726,17 +781,40 @@ namespace ObsidianUpload
 			CharacterInfo character = CurrentCharacter;
 
 			if (character == null)
+			{
 				return;
+			}
 
-		    if (TargetCharacter == null)
-		        return;
+			if (TargetCharacter == null)
+			{
+				return;
+			}
 
 			OAuthSession newSession = CreateOAuthSession();
 			newSession.ConsumerContext.UseHeaderForOAuthParameters = true;
-			HttpWebRequest request = newSession.Request()
-				.ForUrl($"https://api.obsidianportal.com/v1/campaigns/{character.CampaignId}/characters/{character.Id}.json")
-				.Put()
-				.ToWebRequest();
+
+			HttpWebRequest request;
+
+			if (character.Id != null)
+			{
+				request = newSession.Request()
+					.ForUrl(
+						$"https://api.obsidianportal.com/v1/campaigns/{character.CampaignId}/characters/{character.Id}.json")
+					.Put()
+					.ToWebRequest();
+			}
+			else
+			{
+				request = newSession.Request()
+					.ForUrl(
+						$"https://api.obsidianportal.com/v1/campaigns/{character.CampaignId}/characters.json")
+					.Post()
+					.ToWebRequest();
+			}
+
+			JObject uploadingCharacter = (JObject)_sourceCharacterObject.DeepClone();
+			uploadingCharacter["is_player_character"] = true;
+			uploadingCharacter["is_game_master_only"] = false;
 
 			using (
 				Stream requestStream = await Task.Factory.FromAsync(
@@ -746,21 +824,61 @@ namespace ObsidianUpload
 			using (var textWriter = new StreamWriter(requestStream))
 			using (var jsonWriter = new JsonTextWriter(textWriter))
 			{
-				var wrapped = new JObject(new JProperty("character", _sourceCharacterObject));
+				var wrapped = new JObject(new JProperty("character", uploadingCharacter));
 				await wrapped.WriteToAsync(jsonWriter);
 			}
 
-			using (
-				var response =
-					(HttpWebResponse) await Task.Factory.FromAsync(request.BeginGetResponse, request.EndGetResponse, null))
+			try
 			{
-				if (response.StatusCode == HttpStatusCode.OK)
-					MessageBox.Show(this, "Character upload complete", "Complete");
-				else
-					MessageBox.Show(this, "Character upload failed!", "Failed", MessageBoxButton.OK, MessageBoxImage.Error);
-			}
+				using (
+					var response =
+						(HttpWebResponse)
+						await Task.Factory.FromAsync(request.BeginGetResponse, request.EndGetResponse, null))
+				{
+					if (response.StatusCode == HttpStatusCode.OK)
+					{
+						using (var streamReader = new StreamReader(response.GetResponseStream()))
+						using (var jsonReader = new JsonTextReader(streamReader))
+						{
+							JObject charObj = JObject.Load(jsonReader);
+							var charInfo = new CharacterInfo
+							{
+								Id = (string)charObj["id"],
+								Name = (string)charObj["name"],
+								Player = (string)charObj["author"]["username"],
+								CampaignId = character.CampaignId,
+							};
 
-			TargetCharacter = ToSummary(_sourceCharacterObject);
+							if (CurrentCampaign.Characters.Any(c => c.Id == charInfo.Id))
+							{
+								CurrentCampaign.Characters.Insert(CurrentCampaign.Characters.Count - 1, charInfo);
+								CurrentCharacter = charInfo;
+							}
+
+							TargetCharacter = ToSummary(charObj);
+						}
+						MessageBox.Show(this, "Character upload complete", "Complete");
+					}
+					else
+					{
+						MessageBox.Show(
+							this,
+							"Character upload failed!",
+							"Failed",
+							MessageBoxButton.OK,
+							MessageBoxImage.Error);
+					}
+				}
+			}
+			catch (Exception)
+			{
+				MessageBox.Show(
+					this,
+					"Character upload failed!",
+					"Failed",
+					MessageBoxButton.OK,
+					MessageBoxImage.Error);
+			}
 		}
 
 		private void OpenNewCharacter(object sender, RoutedEventArgs e)
@@ -776,7 +894,9 @@ namespace ObsidianUpload
 			};
 
 			if (dlg.ShowDialog() == true)
+			{
 				LoadSourceCharacter(dlg.FileName);
+			}
 		}
 	}
 }
