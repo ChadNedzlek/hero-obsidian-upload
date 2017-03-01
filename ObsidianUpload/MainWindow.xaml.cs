@@ -257,7 +257,7 @@ namespace ObsidianUpload
 					aCounter++;
 
 					sheet[$"armor{aCounter}"] = armor.Attribute("name").Value;
-					sheet[$"armor{aCounter}_ac_bonus"] = armor.Attribute("name").Value;
+					sheet[$"armor{aCounter}_ac_bonus"] = armor.Attribute("ac").Value;
 
 					if (armor.Attribute("equipped")?.Value == "yes")
 					{
