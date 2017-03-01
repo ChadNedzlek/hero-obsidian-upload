@@ -275,11 +275,6 @@ namespace ObsidianUpload
 				var wCounter = 0;
 				foreach (XElement weapon in elem.Element("melee").Elements("weapon"))
 				{
-					if (weapon.Attribute("useradded")?.Value == "no")
-					{
-						continue;
-					}
-
 					wCounter++;
 
 					sheet[$"weapon{wCounter}"] = weapon.Attribute("name").Value;
@@ -298,11 +293,6 @@ namespace ObsidianUpload
 
 				foreach (XElement weapon in elem.Element("ranged").Elements("weapon"))
 				{
-					if (weapon.Attribute("useradded")?.Value == "no")
-					{
-						continue;
-					}
-
 					wCounter++;
 
 					sheet[$"weapon{wCounter}"] = weapon.Attribute("name").Value;
